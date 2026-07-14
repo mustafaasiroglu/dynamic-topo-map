@@ -166,16 +166,19 @@ async function render(
   range: ElevationRange,
 ) {
   const elevations = await loadTile(tile)
-  const stops = getPalette(paletteId).stops.map(hexToRgb)
+  const palette = getPalette(paletteId)
+  const stops = palette.stops.map(hexToRgb)
+  const zeroColor = palette.zeroColor ? hexToRgb(palette.zeroColor) : null
   const image = new ImageData(TILE_SIZE, TILE_SIZE)
-  const span = Math.max(1, range.max - range.min)
+  const elevationMinimum = zeroColor ? Math.max(0, range.min) : range.min
+  const span = Math.max(1, range.max - elevationMinimum)
 
   for (let y = 0; y < TILE_SIZE; y += 1) {
     for (let x = 0; x < TILE_SIZE; x += 1) {
       const index = y * TILE_SIZE + x
       const offset = index * 4
       const elevation = elevations[index]
-      const normalized = (elevation - range.min) / span
+      const normalized = (elevation - elevationMinimum) / span
       const terrain = relief(elevations, x, y, tile)
       let color: number[]
 
@@ -186,6 +189,8 @@ async function render(
         color = paletteColor(stops, terrain.slope / 60)
       } else if (mode === 'aspect') {
         color = paletteColor(stops, terrain.aspect / 360)
+      } else if (zeroColor && elevation <= 0) {
+        color = zeroColor
       } else {
         color = paletteColor(stops, normalized)
         if (mode === 'combined') {

@@ -8,6 +8,7 @@ subtle relief and large mountain ranges retain useful contrast.
 
 - Dynamic elevation, hillshade, combined relief, slope, and aspect views
 - Seven selectable color palettes
+- Istanbul default view and an on-demand current-location control
 - Live cursor elevation and visible elevation range
 - Mouse, keyboard, and touch navigation through MapLibre GL JS
 - DEM decoding and image generation in a Web Worker

@@ -5,7 +5,7 @@ export type PaletteId =
   | 'inferno'
   | 'grayscale'
   | 'earth'
-  | 'accessible'
+  | 'basic'
 
 export type LayerMode =
   | 'dynamic'
@@ -29,4 +29,5 @@ export interface Palette {
   id: PaletteId
   label: string
   stops: readonly string[]
+  zeroColor?: string
 }
