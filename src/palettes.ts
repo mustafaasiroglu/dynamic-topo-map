@@ -2,6 +2,12 @@ import type { Palette } from './types'
 
 export const PALETTES: readonly Palette[] = [
   {
+    id: 'basic',
+    label: 'Default',
+    stops: ['#2e7d32', '#fdd835', '#fb8c00', '#d32f2f', '#4e2718'],
+    zeroColor: '#1565c0',
+  },
+  {
     id: 'terrain',
     label: 'Terrain',
     stops: ['#163a2d', '#43855a', '#b8c66a', '#a66f45', '#f3eee2'],
@@ -30,12 +36,6 @@ export const PALETTES: readonly Palette[] = [
     id: 'earth',
     label: 'Earth',
     stops: ['#233d35', '#68895b', '#b9a66b', '#8e644d', '#d9d0c1'],
-  },
-  {
-    id: 'basic',
-    label: 'Basic Gradient',
-    stops: ['#2e7d32', '#fdd835', '#fb8c00', '#d32f2f', '#4e2718'],
-    zeroColor: '#1565c0',
   },
 ] as const
 
