@@ -22,6 +22,9 @@ const LAYER_ID = 'dynamic-terrain'
 const MEASUREMENT_SOURCE_ID = 'measurement-route'
 const MEASUREMENT_LINE_ID = 'measurement-line'
 const MEASUREMENT_POINTS_ID = 'measurement-points'
+const LONG_PRESS_DURATION_MS = 1000
+const PRESS_MOVE_THRESHOLD_PX = 8
+const MIN_POINT_DISTANCE_METERS = 1
 
 const LAYERS: readonly { id: LayerMode; label: string }[] = [
   { id: 'dynamic', label: 'Dynamic elevation' },
@@ -112,7 +115,12 @@ function App() {
   const displayedMeasurementPoints = useMemo(() => {
     if (!previewPoint) return measurementPoints
     const last = measurementPoints.at(-1)
-    if (last && distanceBetween(last, previewPoint) < 1) return measurementPoints
+    if (
+      last &&
+      distanceBetween(last, previewPoint) < MIN_POINT_DISTANCE_METERS
+    ) {
+      return measurementPoints
+    }
     return [...measurementPoints, previewPoint]
   }, [measurementPoints, previewPoint])
   const measuredDistances = useMemo(
@@ -346,7 +354,7 @@ function App() {
           y: Math.min(bounds.height - 60, Math.max(12, pressStart.y - bounds.top)),
         })
         cancelLongPress()
-      }, 1000)
+      }, LONG_PRESS_DURATION_MS)
     }
     const onPointerMove = (event: PointerEvent) => {
       if (drawingPointer === event.pointerId && measuringRef.current) {
@@ -356,7 +364,8 @@ function App() {
       }
       if (
         pressStart &&
-        Math.hypot(event.clientX - pressStart.x, event.clientY - pressStart.y) > 8
+        Math.hypot(event.clientX - pressStart.x, event.clientY - pressStart.y) >
+          PRESS_MOVE_THRESHOLD_PX
       ) {
         cancelLongPress()
       }
@@ -368,7 +377,10 @@ function App() {
       const coordinate = coordinateAt(event)
       setMeasurementPoints((points) => {
         const last = points.at(-1)
-        return last && distanceBetween(last, coordinate) >= 1
+        return (
+          last &&
+          distanceBetween(last, coordinate) >= MIN_POINT_DISTANCE_METERS
+        )
           ? [...points, coordinate]
           : points
       })
@@ -673,7 +685,9 @@ function App() {
               <strong>{formatDistance(measuredDistances.direct)}</strong>
             </div>
             <small>
-              {measurementPoints.length} points · Drag on the map to add a point
+              {measurementPoints.length}{' '}
+              {measurementPoints.length === 1 ? 'point' : 'points'} · Drag on the
+              map to add a point
             </small>
           </div>
           <div className="profile-chart">
