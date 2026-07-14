@@ -157,8 +157,10 @@ function App() {
       ),
     [hasPreviewSegment, measurementPoints, previewPoint],
   )
-  const liveWalkingDistance =
-    measuredWalkingDistance + walkingDistance(previewProfile)
+  const liveWalkingDistance = useMemo(
+    () => measuredWalkingDistance + walkingDistance(previewProfile),
+    [measuredWalkingDistance, previewProfile],
+  )
   const chartGeometry = useMemo(() => {
     const committedSamples = profile.filter(
       (sample): sample is { distance: number; elevation: number } =>
@@ -199,6 +201,7 @@ function App() {
       }
       return [
         {
+          distance: pointDistance,
           x: (pointDistance / distance) * 600,
           y: 92 - ((nearest.elevation - min) / span) * 82,
         },
@@ -778,12 +781,12 @@ function App() {
                     points={chartGeometry.preview}
                   />
                 )}
-                {chartGeometry.markers.map((marker, index) => (
+                {chartGeometry.markers.map((marker) => (
                   <circle
                     className="profile-marker"
                     cx={marker.x}
                     cy={marker.y}
-                    key={index}
+                    key={marker.distance}
                     r="5"
                   />
                 ))}
