@@ -191,23 +191,20 @@ function App() {
     const committed = committedSamples.map(toPoint).join(' ')
     const preview = previewSamples.map(toPoint).join(' ')
     const pointDistances = routePointDistances(measurementPoints)
-    const markers = pointDistances.flatMap((pointDistance, index) => {
-      let nearest = samples[0]
-      for (const sample of samples) {
-        if (
-          Math.abs(sample.distance - pointDistance) <
-          Math.abs(nearest.distance - pointDistance)
-        ) {
-          nearest = sample
-        }
+    let sampleIndex = 0
+    const markers = pointDistances.map((pointDistance, index) => {
+      while (
+        sampleIndex < samples.length - 1 &&
+        Math.abs(samples[sampleIndex + 1].distance - pointDistance) <
+          Math.abs(samples[sampleIndex].distance - pointDistance)
+      ) {
+        sampleIndex += 1
       }
-      return [
-        {
-          id: index,
-          x: (pointDistance / distance) * 600,
-          y: 92 - ((nearest.elevation - min) / span) * 82,
-        },
-      ]
+      return {
+        id: index,
+        x: (pointDistance / distance) * 600,
+        y: 92 - ((samples[sampleIndex].elevation - min) / span) * 82,
+      }
     })
     return {
       committed,
