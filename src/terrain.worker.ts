@@ -98,7 +98,10 @@ async function analyze(tiles: TileCoordinate[]) {
   if (!Number.isFinite(min) || !Number.isFinite(max)) {
     throw new Error('No elevation samples found')
   }
-  return { min: Math.round(min), max: Math.round(max) }
+  return {
+    min: Math.max(0, Math.round(min)),
+    max: Math.max(0, Math.round(max)),
+  }
 }
 
 function hexToRgb(hex: string) {
@@ -170,14 +173,15 @@ async function render(
   const stops = palette.stops.map(hexToRgb)
   const zeroColor = palette.zeroColor ? hexToRgb(palette.zeroColor) : null
   const image = new ImageData(TILE_SIZE, TILE_SIZE)
-  const gradientStart = zeroColor ? Math.max(0, range.min) : range.min
-  const span = Math.max(1, range.max - gradientStart)
+  const gradientStart = Math.max(0, range.min)
+  const gradientEnd = Math.max(gradientStart, range.max)
+  const span = Math.max(1, gradientEnd - gradientStart)
 
   for (let y = 0; y < TILE_SIZE; y += 1) {
     for (let x = 0; x < TILE_SIZE; x += 1) {
       const index = y * TILE_SIZE + x
       const offset = index * 4
-      const elevation = elevations[index]
+      const elevation = Math.max(0, elevations[index])
       const normalized = (elevation - gradientStart) / span
       const terrain = relief(elevations, x, y, tile)
       let color: number[]

@@ -9,6 +9,7 @@ import {
   buildRouteSamples,
   distanceBetween,
   routeDistances,
+  walkingDistance,
   type Coordinate,
 } from './measurement'
 import { PALETTES, getPalette } from './palettes'
@@ -21,9 +22,8 @@ const SOURCE_ID = 'dynamic-terrain'
 const LAYER_ID = 'dynamic-terrain'
 const MEASUREMENT_SOURCE_ID = 'measurement-route'
 const MEASUREMENT_LINE_ID = 'measurement-line'
+const MEASUREMENT_PREVIEW_LINE_ID = 'measurement-preview-line'
 const MEASUREMENT_POINTS_ID = 'measurement-points'
-const LONG_PRESS_DURATION_MS = 1000
-const PRESS_MOVE_THRESHOLD_PX = 8
 const MIN_POINT_DISTANCE_METERS = 1
 const LOCATION_MARKER_COLOR = '#1d6f42'
 
@@ -82,11 +82,6 @@ function App() {
   const [locationStatus, setLocationStatus] = useState<
     'idle' | 'loading' | 'error'
   >('idle')
-  const [measurePrompt, setMeasurePrompt] = useState<{
-    coordinate: Coordinate
-    x: number
-    y: number
-  } | null>(null)
   const [measuring, setMeasuring] = useState(false)
   const [measurementPoints, setMeasurementPoints] = useState<Coordinate[]>([])
   const [previewPoint, setPreviewPoint] = useState<Coordinate | null>(null)
@@ -113,21 +108,11 @@ function App() {
       high: formatElevation(range.max),
     }
   }, [activePalette.stops, activePalette.zeroColor, mode, range.max, range.min])
-  const displayedMeasurementPoints = useMemo(() => {
-    if (!previewPoint) return measurementPoints
-    const last = measurementPoints.at(-1)
-    if (
-      last &&
-      distanceBetween(last, previewPoint) < MIN_POINT_DISTANCE_METERS
-    ) {
-      return measurementPoints
-    }
-    return [...measurementPoints, previewPoint]
-  }, [measurementPoints, previewPoint])
   const measuredDistances = useMemo(
-    () => routeDistances(displayedMeasurementPoints),
-    [displayedMeasurementPoints],
+    () => routeDistances(measurementPoints),
+    [measurementPoints],
   )
+  const measuredWalkingDistance = useMemo(() => walkingDistance(profile), [profile])
   const profilePolyline = useMemo(() => {
     const samples = profile.filter(
       (sample): sample is { distance: number; elevation: number } =>
@@ -189,8 +174,11 @@ function App() {
       if (sequence !== analysisSequence.current) return
       const paddedRange =
         nextRange.min === nextRange.max
-          ? { min: nextRange.min - 1, max: nextRange.max + 1 }
-          : nextRange
+          ? {
+              min: Math.max(0, nextRange.min - 1),
+              max: nextRange.max + 1,
+            }
+          : { min: Math.max(0, nextRange.min), max: Math.max(0, nextRange.max) }
       setRange(paddedRange)
       updateTerrainSource(paddedRange)
       setStatus('ready')
@@ -276,11 +264,23 @@ function App() {
         id: MEASUREMENT_LINE_ID,
         type: 'line',
         source: MEASUREMENT_SOURCE_ID,
-        filter: ['==', ['geometry-type'], 'LineString'],
+        filter: ['==', ['get', 'kind'], 'route'],
         paint: {
           'line-color': '#173f2b',
           'line-width': 4,
           'line-opacity': 0.9,
+        },
+      })
+      map.addLayer({
+        id: MEASUREMENT_PREVIEW_LINE_ID,
+        type: 'line',
+        source: MEASUREMENT_SOURCE_ID,
+        filter: ['==', ['get', 'kind'], 'preview'],
+        paint: {
+          'line-color': '#173f2b',
+          'line-width': 3,
+          'line-opacity': 0.8,
+          'line-dasharray': [2, 2],
         },
       })
       map.addLayer({
@@ -296,6 +296,12 @@ function App() {
         },
       })
       void analyzeViewport()
+    })
+    map.on('move', () => {
+      if (measuringRef.current) {
+        const center = map.getCenter()
+        setPreviewPoint([center.lng, center.lat])
+      }
     })
     map.on('moveend', analyzeViewport)
     map.on('mousemove', (event) => {
@@ -313,97 +319,10 @@ function App() {
     })
     map.on('mouseout', () => setCursorElevation(null))
 
-    const canvas = map.getCanvas()
-    let longPressTimer: ReturnType<typeof setTimeout> | undefined
-    let pressStart: { x: number; y: number } | null = null
-    let drawingPointer: number | null = null
-
-    const cancelLongPress = () => {
-      if (longPressTimer) clearTimeout(longPressTimer)
-      longPressTimer = undefined
-      pressStart = null
-    }
-    const coordinateAt = (event: PointerEvent): Coordinate => {
-      const bounds = canvas.getBoundingClientRect()
-      const point = map.unproject([
-        event.clientX - bounds.left,
-        event.clientY - bounds.top,
-      ])
-      return [point.lng, point.lat]
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) return
-      if (measuringRef.current) {
-        if (drawingPointer !== null) return
-        event.preventDefault()
-        drawingPointer = event.pointerId
-        canvas.setPointerCapture(event.pointerId)
-        setPreviewPoint(coordinateAt(event))
-        return
-      }
-      pressStart = { x: event.clientX, y: event.clientY }
-      longPressTimer = setTimeout(() => {
-        if (!pressStart) return
-        const bounds = canvas.getBoundingClientRect()
-        const coordinate = map.unproject([
-          pressStart.x - bounds.left,
-          pressStart.y - bounds.top,
-        ])
-        map.stop()
-        setMeasurePrompt({
-          coordinate: [coordinate.lng, coordinate.lat],
-          x: Math.min(bounds.width - 180, Math.max(12, pressStart.x - bounds.left)),
-          y: Math.min(bounds.height - 60, Math.max(12, pressStart.y - bounds.top)),
-        })
-        cancelLongPress()
-      }, LONG_PRESS_DURATION_MS)
-    }
-    const onPointerMove = (event: PointerEvent) => {
-      if (drawingPointer === event.pointerId && measuringRef.current) {
-        event.preventDefault()
-        setPreviewPoint(coordinateAt(event))
-        return
-      }
-      if (
-        pressStart &&
-        Math.hypot(event.clientX - pressStart.x, event.clientY - pressStart.y) >
-          PRESS_MOVE_THRESHOLD_PX
-      ) {
-        cancelLongPress()
-      }
-    }
-    const onPointerUp = (event: PointerEvent) => {
-      cancelLongPress()
-      if (drawingPointer !== event.pointerId || !measuringRef.current) return
-      event.preventDefault()
-      const coordinate = coordinateAt(event)
-      setMeasurementPoints((points) => {
-        const last = points.at(-1)
-        return !last ||
-          distanceBetween(last, coordinate) >= MIN_POINT_DISTANCE_METERS
-          ? [...points, coordinate]
-          : points
-      })
-      setPreviewPoint(null)
-      drawingPointer = null
-      if (canvas.hasPointerCapture(event.pointerId)) {
-        canvas.releasePointerCapture(event.pointerId)
-      }
-    }
-    canvas.addEventListener('pointerdown', onPointerDown)
-    canvas.addEventListener('pointermove', onPointerMove)
-    canvas.addEventListener('pointerup', onPointerUp)
-    canvas.addEventListener('pointercancel', onPointerUp)
-
     return () => {
       analysisSequence.current += 1
       sampleSequence.current += 1
       profileSequence.current += 1
-      cancelLongPress()
-      canvas.removeEventListener('pointerdown', onPointerDown)
-      canvas.removeEventListener('pointermove', onPointerMove)
-      canvas.removeEventListener('pointerup', onPointerUp)
-      canvas.removeEventListener('pointercancel', onPointerUp)
       locationMarkerRef.current?.remove()
       map.remove()
       mapRef.current = null
@@ -422,7 +341,7 @@ function App() {
       MEASUREMENT_SOURCE_ID,
     ) as GeoJSONSource | undefined
     if (!source) return
-    const pointFeatures = displayedMeasurementPoints.map(
+    const pointFeatures = measurementPoints.map(
       (coordinate, index) => ({
         type: 'Feature' as const,
         properties: { index },
@@ -430,23 +349,38 @@ function App() {
       }),
     )
     const lineFeatures =
-      displayedMeasurementPoints.length > 1
+      measurementPoints.length > 1
         ? [
             {
               type: 'Feature' as const,
-              properties: {},
+              properties: { kind: 'route' },
               geometry: {
                 type: 'LineString' as const,
-                coordinates: displayedMeasurementPoints,
+                coordinates: measurementPoints,
               },
             },
           ]
         : []
+    const lastPoint = measurementPoints.at(-1)
+    if (
+      lastPoint &&
+      previewPoint &&
+      distanceBetween(lastPoint, previewPoint) >= MIN_POINT_DISTANCE_METERS
+    ) {
+      lineFeatures.push({
+        type: 'Feature' as const,
+        properties: { kind: 'preview' },
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: [lastPoint, previewPoint],
+        },
+      })
+    }
     source.setData({
       type: 'FeatureCollection',
       features: [...lineFeatures, ...pointFeatures],
     })
-  }, [displayedMeasurementPoints])
+  }, [measurementPoints, previewPoint])
 
   useEffect(() => {
     const client = clientRef.current
@@ -510,15 +444,29 @@ function App() {
   }
 
   const startMeasurement = () => {
-    if (!measurePrompt) return
+    const center = mapRef.current?.getCenter()
+    if (!center) return
     measuringRef.current = true
     setMeasuring(true)
-    setMeasurementPoints([measurePrompt.coordinate])
-    setPreviewPoint(null)
-    setMeasurePrompt(null)
-    mapRef.current?.dragPan.disable()
-    mapRef.current?.touchZoomRotate.disable()
-    mapRef.current?.doubleClickZoom.disable()
+    setMeasurementPoints([])
+    setPreviewPoint([center.lng, center.lat])
+  }
+
+  const addMeasurementPoint = () => {
+    const center = mapRef.current?.getCenter()
+    if (!center) return
+    const coordinate: Coordinate = [center.lng, center.lat]
+    setMeasurementPoints((points) => {
+      const last = points.at(-1)
+      return !last || distanceBetween(last, coordinate) >= MIN_POINT_DISTANCE_METERS
+        ? [...points, coordinate]
+        : points
+    })
+    setPreviewPoint(coordinate)
+  }
+
+  const undoMeasurementPoint = () => {
+    setMeasurementPoints((points) => points.slice(0, -1))
   }
 
   const stopMeasurement = () => {
@@ -527,9 +475,6 @@ function App() {
     setMeasurementPoints([])
     setPreviewPoint(null)
     setProfile([])
-    mapRef.current?.dragPan.enable()
-    mapRef.current?.touchZoomRotate.enable()
-    mapRef.current?.doubleClickZoom.enable()
   }
 
   const toggleFullscreen = async () => {
@@ -554,38 +499,40 @@ function App() {
         </div>
       </header>
 
-      <button
-        className={`location-button ${locationStatus}`}
-        type="button"
-        aria-label="Go to current location"
-        title={
-          locationStatus === 'error'
-            ? 'Current location unavailable'
-            : 'Go to current location'
-        }
-        onClick={locateUser}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
-          <circle cx="12" cy="12" r="8" />
-        </svg>
-      </button>
-
-      {measurePrompt && (
+      <div className="map-tools">
         <button
-          className="measure-prompt"
+          className={`map-tool-button ${locationStatus}`}
           type="button"
-          style={{ left: measurePrompt.x, top: measurePrompt.y }}
-          onClick={startMeasurement}
+          aria-label="Go to current location"
+          title={
+            locationStatus === 'error'
+              ? 'Current location unavailable'
+              : 'Go to current location'
+          }
+          onClick={locateUser}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+            <circle cx="12" cy="12" r="8" />
+          </svg>
+        </button>
+        <button
+          className={`map-tool-button ${measuring ? 'active' : ''}`}
+          type="button"
+          aria-label={measuring ? 'Close distance measurement' : 'Measure distance'}
+          aria-pressed={measuring}
+          title={measuring ? 'Close distance measurement' : 'Measure distance'}
+          onClick={measuring ? stopMeasurement : startMeasurement}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m4 17 13-13 3 3L7 20H4v-3Z" />
             <path d="m13 8 3 3M9 12l2 2M17 4l3 3" />
           </svg>
-          Measure distance
         </button>
-      )}
+      </div>
+
+      {measuring && <div className="measurement-reticle" aria-hidden="true" />}
 
       <section className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
         <button
@@ -679,17 +626,21 @@ function App() {
           </button>
           <div className="measurement-heading">
             <div>
-              <span>Route distance</span>
+              <span>As-the-crow-flies</span>
               <strong>{formatDistance(measuredDistances.total)}</strong>
             </div>
             <div>
-              <span>Direct distance</span>
-              <strong>{formatDistance(measuredDistances.direct)}</strong>
+              <span>Walking distance</span>
+              <strong>
+                {profileLoading
+                  ? '…'
+                  : formatDistance(measuredWalkingDistance)}
+              </strong>
             </div>
             <small>
               {measurementPoints.length}{' '}
-              {measurementPoints.length === 1 ? 'point' : 'points'} · Drag on the
-              map to add a point
+              {measurementPoints.length === 1 ? 'point' : 'points'} · Move the map
+              to position the next point
             </small>
           </div>
           <div className="profile-chart">
@@ -706,8 +657,30 @@ function App() {
                 <polyline points={profilePolyline} />
               </svg>
             ) : (
-              <span>Drag to choose the next point</span>
+              <span>Add at least two points to see the elevation profile</span>
             )}
+          </div>
+          <div className="measurement-actions">
+            <button
+              className="undo-point"
+              type="button"
+              aria-label="Undo last point"
+              title="Undo last point"
+              disabled={measurementPoints.length === 0}
+              onClick={undoMeasurementPoint}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 7 4 12l5 5" />
+                <path d="M5 12h8a6 6 0 0 1 6 6" />
+              </svg>
+            </button>
+            <button
+              className="add-point"
+              type="button"
+              onClick={addMeasurementPoint}
+            >
+              <span aria-hidden="true">+</span> Add point
+            </button>
           </div>
         </section>
       )}

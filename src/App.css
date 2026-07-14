@@ -86,10 +86,15 @@
   text-transform: uppercase;
 }
 
-.location-button {
+.map-tools {
   position: absolute;
-  right: 22px;
-  bottom: 122px;
+  top: 82px;
+  left: 22px;
+  display: flex;
+  gap: 7px;
+}
+
+.map-tool-button {
   display: grid;
   width: 38px;
   height: 38px;
@@ -102,7 +107,7 @@
   cursor: pointer;
 }
 
-.location-button svg {
+.map-tool-button svg {
   width: 21px;
   fill: none;
   stroke: currentColor;
@@ -111,38 +116,33 @@
   stroke-width: 1.7;
 }
 
-.location-button.loading {
+.map-tool-button.loading {
   animation: pulse 900ms infinite alternate;
 }
 
-.location-button.error {
+.map-tool-button.error {
   color: #a33e38;
 }
 
-.measure-prompt {
-  position: absolute;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 12px;
+.map-tool-button.active {
   color: #fff;
   background: #173f2b;
-  border: 0;
-  border-radius: 9px;
-  box-shadow: 0 5px 18px rgba(20, 34, 25, 0.3);
-  font-size: 12px;
-  font-weight: 750;
-  cursor: pointer;
 }
 
-.measure-prompt svg {
-  width: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
+.measurement-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow:
+    0 1px 5px rgba(20, 34, 25, 0.65),
+    inset 0 1px 4px rgba(20, 34, 25, 0.35);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
 .control-panel {
@@ -278,7 +278,7 @@
   bottom: 78px;
   left: 22px;
   display: grid;
-  grid-template-columns: minmax(250px, 0.8fr) minmax(320px, 1.7fr);
+  grid-template-columns: minmax(250px, 0.8fr) minmax(320px, 1.7fr) auto;
   gap: 22px;
   max-width: 900px;
   min-height: 118px;
@@ -289,6 +289,58 @@
   border: 1px solid #e1e4de;
   border-radius: 14px;
   box-shadow: 0 8px 30px rgba(25, 40, 30, 0.2);
+}
+
+.measurement-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.measurement-actions button {
+  height: 40px;
+  border: 0;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.measurement-actions svg {
+  width: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.undo-point {
+  display: grid;
+  width: 40px;
+  place-items: center;
+  color: #35453a;
+  background: #edf1ed;
+}
+
+.undo-point:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.add-point {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  color: #fff;
+  background: #173f2b;
+  white-space: nowrap;
+}
+
+.add-point span {
+  font-size: 20px;
+  font-weight: 400;
 }
 
 .measurement-close {
@@ -478,6 +530,11 @@
     display: none;
   }
 
+  .map-tools {
+    top: 65px;
+    left: 12px;
+  }
+
   .control-panel {
     top: 12px;
     right: 12px;
@@ -513,6 +570,10 @@
     padding: 13px 38px 12px 14px;
   }
 
+  .measurement-actions {
+    justify-content: flex-end;
+  }
+
   .measurement-heading {
     padding-right: 4px;
   }
@@ -525,12 +586,6 @@
   .profile-chart svg {
     height: 58px;
     min-height: 58px;
-  }
-
-  .location-button {
-    right: 12px;
-    bottom: 12px;
-    z-index: 2;
   }
 
   .legend {

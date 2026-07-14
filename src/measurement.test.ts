@@ -3,6 +3,7 @@ import {
   buildRouteSamples,
   distanceBetween,
   routeDistances,
+  walkingDistance,
   type Coordinate,
 } from './measurement'
 
@@ -35,5 +36,15 @@ describe('route measurement', () => {
 
   it('does not sample an unfinished route', () => {
     expect(buildRouteSamples([[28, 41]])).toEqual([])
+  })
+
+  it('includes elevation changes in walking distance', () => {
+    expect(
+      walkingDistance([
+        { distance: 0, elevation: 10 },
+        { distance: 30, elevation: 50 },
+        { distance: 60, elevation: null },
+      ]),
+    ).toBe(80)
   })
 })
