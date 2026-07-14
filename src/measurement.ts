@@ -5,6 +5,11 @@ export interface RouteSample {
   distance: number
 }
 
+export interface ElevationSample {
+  distance: number
+  elevation: number | null
+}
+
 const EARTH_RADIUS = 6_371_000
 
 function radians(value: number) {
@@ -29,11 +34,27 @@ export function routeDistances(points: readonly Coordinate[]) {
   for (let index = 1; index < points.length; index += 1) {
     total += distanceBetween(points[index - 1], points[index])
   }
+
   return {
     total,
     direct:
       points.length > 1 ? distanceBetween(points[0], points.at(-1)!) : 0,
   }
+}
+
+export function walkingDistance(samples: readonly ElevationSample[]) {
+  let total = 0
+  for (let index = 1; index < samples.length; index += 1) {
+    const horizontal = samples[index].distance - samples[index - 1].distance
+    const startElevation = samples[index - 1].elevation
+    const endElevation = samples[index].elevation
+    const vertical =
+      startElevation === null || endElevation === null
+        ? 0
+        : endElevation - startElevation
+    total += Math.hypot(horizontal, vertical)
+  }
+  return total
 }
 
 export function buildRouteSamples(
