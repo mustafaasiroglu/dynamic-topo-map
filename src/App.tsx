@@ -640,7 +640,7 @@ function App() {
             <small>
               {measurementPoints.length}{' '}
               {measurementPoints.length === 1 ? 'point' : 'points'} · Move the map
-              to position the target
+              to position the next point
             </small>
           </div>
           <div className="profile-chart">
