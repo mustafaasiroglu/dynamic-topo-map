@@ -191,8 +191,10 @@ function App() {
     const committed = committedSamples.map(toPoint).join(' ')
     const preview = previewSamples.map(toPoint).join(' ')
     const pointDistances = routePointDistances(measurementPoints)
+      .map((pointDistance, index) => ({ pointDistance, index }))
+      .filter(({ pointDistance }) => pointDistance <= samples.at(-1)!.distance)
     let sampleIndex = 0
-    const markers = pointDistances.map((pointDistance, index) => {
+    const markers = pointDistances.map(({ pointDistance, index }) => {
       while (
         sampleIndex < samples.length - 1 &&
         Math.abs(samples[sampleIndex + 1].distance - pointDistance) <
@@ -557,18 +559,22 @@ function App() {
     const center = mapRef.current?.getCenter()
     if (!center) return
     const coordinate: Coordinate = [center.lng, center.lat]
-    setMeasurementPoints((points) => {
-      const last = points.at(-1)
-      return !last || distanceBetween(last, coordinate) >= MIN_POINT_DISTANCE_METERS
-        ? [...points, coordinate]
-        : points
-    })
+    const lastPoint = measurementPoints.at(-1)
+    if (
+      lastPoint &&
+      distanceBetween(lastPoint, coordinate) < MIN_POINT_DISTANCE_METERS
+    ) {
+      return
+    }
+    setMeasurementPoints((points) => [...points, coordinate])
     setPreviewProfile([])
+    setProfile([])
     setPreviewPoint(coordinate)
   }
 
   const undoMeasurementPoint = () => {
     setMeasurementPoints((points) => points.slice(0, -1))
+    setProfile([])
   }
 
   const stopMeasurement = () => {
