@@ -27,6 +27,7 @@ const MEASUREMENT_PREVIEW_LINE_ID = 'measurement-preview-line'
 const MEASUREMENT_POINTS_ID = 'measurement-points'
 const MIN_POINT_DISTANCE_METERS = 1
 const PREVIEW_DEBOUNCE_MS = 80
+const PREVIEW_SAMPLE_COUNT = 24
 const LOCATION_MARKER_COLOR = '#1d6f42'
 
 const LAYERS: readonly { id: LayerMode; label: string }[] = [
@@ -202,7 +203,7 @@ function App() {
       }
       return [
         {
-          id: `${measurementPoints[index][0]}:${measurementPoints[index][1]}:${index}`,
+          id: index,
           x: (pointDistance / distance) * 600,
           y: 92 - ((nearest.elevation - min) / span) * 82,
         },
@@ -506,13 +507,16 @@ function App() {
         13,
         Math.max(0, Math.floor(mapRef.current?.getZoom() ?? HOME_VIEW.zoom)),
       )
-      void sampleElevationProfile(client, [lastPoint, previewPoint], zoom, 24).then(
-        (nextProfile) => {
-          if (sequence !== previewProfileSequence.current) return
-          setPreviewProfile(nextProfile)
-          setPreviewProfileLoading(false)
-        },
-      )
+      void sampleElevationProfile(
+        client,
+        [lastPoint, previewPoint],
+        zoom,
+        PREVIEW_SAMPLE_COUNT,
+      ).then((nextProfile) => {
+        if (sequence !== previewProfileSequence.current) return
+        setPreviewProfile(nextProfile)
+        setPreviewProfileLoading(false)
+      })
     }, PREVIEW_DEBOUNCE_MS)
     return () => window.clearTimeout(timeout)
   }, [hasPreviewSegment, measurementPoints, previewPoint])
