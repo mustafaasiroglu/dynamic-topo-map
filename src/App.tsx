@@ -9,7 +9,7 @@ import { TerrainClient } from './terrainClient'
 import { lngLatToTile, visibleTiles } from './tileMath'
 import type { ElevationRange, LayerMode, PaletteId } from './types'
 
-const HOME_VIEW = { center: [10.1, 46.6] as [number, number], zoom: 6.3 }
+const HOME_VIEW = { center: [28.9784, 41.0082] as [number, number], zoom: 10 }
 const SOURCE_ID = 'dynamic-terrain'
 const LAYER_ID = 'dynamic-terrain'
 
@@ -66,11 +66,13 @@ function App() {
       return { stops: activePalette.stops, low: '0°', high: '360°' }
     }
     return {
-      stops: activePalette.stops,
+      stops: activePalette.zeroColor
+        ? [activePalette.zeroColor, ...activePalette.stops]
+        : activePalette.stops,
       low: formatElevation(range.min),
       high: formatElevation(range.max),
     }
-  }, [activePalette.stops, mode, range.max, range.min])
+  }, [activePalette.stops, activePalette.zeroColor, mode, range.max, range.min])
 
   const updateTerrainSource = useCallback(
     (
@@ -161,6 +163,13 @@ function App() {
     mapRef.current = map
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
+      'bottom-right',
+    )
+    map.addControl(
+      new maplibregl.GeolocateControl({
+        trackUserLocation: false,
+        showUserLocation: true,
+      }),
       'bottom-right',
     )
     map.addControl(

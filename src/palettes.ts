@@ -32,9 +32,10 @@ export const PALETTES: readonly Palette[] = [
     stops: ['#233d35', '#68895b', '#b9a66b', '#8e644d', '#d9d0c1'],
   },
   {
-    id: 'accessible',
-    label: 'Colorblind friendly',
-    stops: ['#352a87', '#0363e1', '#00a6ca', '#7ac7c4', '#f9d057', '#f29e2e'],
+    id: 'basic',
+    label: 'Basic Gradient',
+    stops: ['#2e7d32', '#fdd835', '#fb8c00', '#d32f2f', '#4e2718'],
+    zeroColor: '#1565c0',
   },
 ] as const
 
