@@ -167,7 +167,6 @@ function App() {
     )
     map.addControl(
       new maplibregl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
         trackUserLocation: false,
         showUserLocation: true,
       }),

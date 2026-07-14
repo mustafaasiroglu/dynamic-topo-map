@@ -170,15 +170,15 @@ async function render(
   const stops = palette.stops.map(hexToRgb)
   const zeroColor = palette.zeroColor ? hexToRgb(palette.zeroColor) : null
   const image = new ImageData(TILE_SIZE, TILE_SIZE)
-  const elevationMinimum = zeroColor ? Math.max(0, range.min) : range.min
-  const span = Math.max(1, range.max - elevationMinimum)
+  const gradientStart = zeroColor ? Math.max(0, range.min) : range.min
+  const span = Math.max(1, range.max - gradientStart)
 
   for (let y = 0; y < TILE_SIZE; y += 1) {
     for (let x = 0; x < TILE_SIZE; x += 1) {
       const index = y * TILE_SIZE + x
       const offset = index * 4
       const elevation = elevations[index]
-      const normalized = (elevation - elevationMinimum) / span
+      const normalized = (elevation - gradientStart) / span
       const terrain = relief(elevations, x, y, tile)
       let color: number[]
 
