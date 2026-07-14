@@ -558,6 +558,7 @@ function App() {
         ? [...points, coordinate]
         : points
     })
+    setPreviewProfile([])
     setPreviewPoint(coordinate)
   }
 
