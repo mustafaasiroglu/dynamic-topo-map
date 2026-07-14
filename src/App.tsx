@@ -26,6 +26,7 @@ const MEASUREMENT_LINE_ID = 'measurement-line'
 const MEASUREMENT_PREVIEW_LINE_ID = 'measurement-preview-line'
 const MEASUREMENT_POINTS_ID = 'measurement-points'
 const MIN_POINT_DISTANCE_METERS = 1
+const PREVIEW_DEBOUNCE_MS = 80
 const LOCATION_MARKER_COLOR = '#1d6f42'
 
 const LAYERS: readonly { id: LayerMode; label: string }[] = [
@@ -189,7 +190,7 @@ function App() {
     const committed = committedSamples.map(toPoint).join(' ')
     const preview = previewSamples.map(toPoint).join(' ')
     const pointDistances = routePointDistances(measurementPoints)
-    const markers = pointDistances.flatMap((pointDistance) => {
+    const markers = pointDistances.flatMap((pointDistance, index) => {
       let nearest = samples[0]
       for (const sample of samples) {
         if (
@@ -201,7 +202,7 @@ function App() {
       }
       return [
         {
-          distance: pointDistance,
+          id: `${measurementPoints[index][0]}:${measurementPoints[index][1]}:${index}`,
           x: (pointDistance / distance) * 600,
           y: 92 - ((nearest.elevation - min) / span) * 82,
         },
@@ -512,7 +513,7 @@ function App() {
           setPreviewProfileLoading(false)
         },
       )
-    }, 80)
+    }, PREVIEW_DEBOUNCE_MS)
     return () => window.clearTimeout(timeout)
   }, [hasPreviewSegment, measurementPoints, previewPoint])
 
@@ -786,7 +787,7 @@ function App() {
                     className="profile-marker"
                     cx={marker.x}
                     cy={marker.y}
-                    key={marker.distance}
+                    key={marker.id}
                     r="5"
                   />
                 ))}
