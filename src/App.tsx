@@ -25,6 +25,7 @@ const MEASUREMENT_POINTS_ID = 'measurement-points'
 const LONG_PRESS_DURATION_MS = 1000
 const PRESS_MOVE_THRESHOLD_PX = 8
 const MIN_POINT_DISTANCE_METERS = 1
+const LOCATION_MARKER_COLOR = '#1d6f42'
 
 const LAYERS: readonly { id: LayerMode; label: string }[] = [
   { id: 'dynamic', label: 'Dynamic elevation' },
@@ -333,6 +334,7 @@ function App() {
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return
       if (measuringRef.current) {
+        if (drawingPointer !== null) return
         event.preventDefault()
         drawingPointer = event.pointerId
         canvas.setPointerCapture(event.pointerId)
@@ -377,10 +379,8 @@ function App() {
       const coordinate = coordinateAt(event)
       setMeasurementPoints((points) => {
         const last = points.at(-1)
-        return (
-          last &&
+        return !last ||
           distanceBetween(last, coordinate) >= MIN_POINT_DISTANCE_METERS
-        )
           ? [...points, coordinate]
           : points
       })
@@ -462,7 +462,7 @@ function App() {
       samples.map(async (sample) => {
         const zoom = Math.min(
           13,
-          Math.max(0, Math.floor(mapRef.current?.getZoom() ?? 10)),
+          Math.max(0, Math.floor(mapRef.current?.getZoom() ?? HOME_VIEW.zoom)),
         )
         const tile = lngLatToTile(
           sample.coordinate[0],
@@ -496,7 +496,9 @@ function App() {
         const map = mapRef.current
         if (!map) return
         locationMarkerRef.current?.remove()
-        locationMarkerRef.current = new maplibregl.Marker({ color: '#1d6f42' })
+        locationMarkerRef.current = new maplibregl.Marker({
+          color: LOCATION_MARKER_COLOR,
+        })
           .setLngLat(coordinate)
           .addTo(map)
         map.easeTo({ center: coordinate, zoom: Math.max(map.getZoom(), 13), duration: 900 })
