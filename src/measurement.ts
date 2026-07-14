@@ -42,6 +42,17 @@ export function routeDistances(points: readonly Coordinate[]) {
   }
 }
 
+export function routePointDistances(points: readonly Coordinate[]) {
+  if (points.length === 0) return []
+  const distances = [0]
+  for (let index = 1; index < points.length; index += 1) {
+    distances.push(
+      distances[index - 1] + distanceBetween(points[index - 1], points[index]),
+    )
+  }
+  return distances
+}
+
 export function walkingDistance(samples: readonly ElevationSample[]) {
   let total = 0
   for (let index = 1; index < samples.length; index += 1) {

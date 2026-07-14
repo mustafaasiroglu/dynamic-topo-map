@@ -9,6 +9,7 @@ import {
   buildRouteSamples,
   distanceBetween,
   routeDistances,
+  routePointDistances,
   walkingDistance,
   type Coordinate,
 } from './measurement'
@@ -50,6 +51,29 @@ interface ProfileSample {
   elevation: number | null
 }
 
+async function sampleElevationProfile(
+  client: TerrainClient,
+  points: readonly Coordinate[],
+  zoom: number,
+  sampleCount?: number,
+) {
+  return Promise.all(
+    buildRouteSamples(points, sampleCount).map(async (sample) => {
+      const tile = lngLatToTile(
+        sample.coordinate[0],
+        sample.coordinate[1],
+        zoom,
+      )
+      try {
+        const elevation = await client.sample(tile, tile.pixelX, tile.pixelY)
+        return { distance: sample.distance, elevation }
+      } catch {
+        return { distance: sample.distance, elevation: null }
+      }
+    }),
+  )
+}
+
 function terrainTileUrl(
   palette: PaletteId,
   mode: LayerMode,
@@ -72,6 +96,7 @@ function App() {
   const analysisSequence = useRef(0)
   const sampleSequence = useRef(0)
   const profileSequence = useRef(0)
+  const previewProfileSequence = useRef(0)
   const measuringRef = useRef(false)
   const [palette, setPalette] = useState<PaletteId>('basic')
   const [mode, setMode] = useState<LayerMode>('dynamic')
@@ -87,6 +112,8 @@ function App() {
   const [previewPoint, setPreviewPoint] = useState<Coordinate | null>(null)
   const [profile, setProfile] = useState<ProfileSample[]>([])
   const [profileLoading, setProfileLoading] = useState(false)
+  const [previewProfile, setPreviewProfile] = useState<ProfileSample[]>([])
+  const [previewProfileLoading, setPreviewProfileLoading] = useState(false)
   const settingsRef = useRef({ palette, mode })
   settingsRef.current = { palette, mode }
   const activePalette = useMemo(() => getPalette(palette), [palette])
@@ -113,24 +140,80 @@ function App() {
     [measurementPoints],
   )
   const measuredWalkingDistance = useMemo(() => walkingDistance(profile), [profile])
-  const profilePolyline = useMemo(() => {
-    const samples = profile.filter(
+  const hasPreviewSegment = useMemo(() => {
+    const lastPoint = measurementPoints.at(-1)
+    return Boolean(
+      lastPoint &&
+        previewPoint &&
+        distanceBetween(lastPoint, previewPoint) >= MIN_POINT_DISTANCE_METERS,
+    )
+  }, [measurementPoints, previewPoint])
+  const liveDistances = useMemo(
+    () =>
+      routeDistances(
+        hasPreviewSegment
+          ? [...measurementPoints, previewPoint!]
+          : measurementPoints,
+      ),
+    [hasPreviewSegment, measurementPoints, previewPoint],
+  )
+  const liveWalkingDistance =
+    measuredWalkingDistance + walkingDistance(previewProfile)
+  const chartGeometry = useMemo(() => {
+    const committedSamples = profile.filter(
       (sample): sample is { distance: number; elevation: number } =>
         sample.elevation !== null && Number.isFinite(sample.elevation),
     )
-    if (samples.length < 2) return ''
+    const previewSamples = previewProfile
+      .filter(
+        (sample): sample is { distance: number; elevation: number } =>
+          sample.elevation !== null && Number.isFinite(sample.elevation),
+      )
+      .map((sample) => ({
+        ...sample,
+        distance: measuredDistances.total + sample.distance,
+      }))
+    const samples = [...committedSamples, ...previewSamples]
+    if (samples.length < 2) {
+      return { committed: '', preview: '', polygon: '', markers: [] }
+    }
     const elevations = samples.map(({ elevation }) => elevation)
     const min = Math.min(...elevations)
     const max = Math.max(...elevations)
     const span = Math.max(1, max - min)
     const distance = Math.max(1, samples.at(-1)!.distance)
-    return samples
-      .map(
-        (sample) =>
-          `${(sample.distance / distance) * 600},${92 - ((sample.elevation - min) / span) * 82}`,
-      )
-      .join(' ')
-  }, [profile])
+    const toPoint = (sample: { distance: number; elevation: number }) =>
+      `${(sample.distance / distance) * 600},${92 - ((sample.elevation - min) / span) * 82}`
+    const committed = committedSamples.map(toPoint).join(' ')
+    const preview = previewSamples.map(toPoint).join(' ')
+    const pointDistances = routePointDistances(measurementPoints)
+    const markers = pointDistances.flatMap((pointDistance) => {
+      let nearest = samples[0]
+      for (const sample of samples) {
+        if (
+          Math.abs(sample.distance - pointDistance) <
+          Math.abs(nearest.distance - pointDistance)
+        ) {
+          nearest = sample
+        }
+      }
+      return [
+        {
+          x: (pointDistance / distance) * 600,
+          y: 92 - ((nearest.elevation - min) / span) * 82,
+        },
+      ]
+    })
+    return {
+      committed,
+      preview,
+      polygon:
+        committedSamples.length >= 2
+          ? `0,100 ${committed} ${(committedSamples.at(-1)!.distance / distance) * 600},100`
+          : '',
+      markers,
+    }
+  }, [measuredDistances.total, measurementPoints, previewProfile, profile])
 
   const updateTerrainSource = useCallback(
     (
@@ -323,6 +406,7 @@ function App() {
       analysisSequence.current += 1
       sampleSequence.current += 1
       profileSequence.current += 1
+      previewProfileSequence.current += 1
       locationMarkerRef.current?.remove()
       map.remove()
       mapRef.current = null
@@ -392,30 +476,42 @@ function App() {
       return
     }
     setProfileLoading(true)
-    void Promise.all(
-      samples.map(async (sample) => {
-        const zoom = Math.min(
-          13,
-          Math.max(0, Math.floor(mapRef.current?.getZoom() ?? HOME_VIEW.zoom)),
-        )
-        const tile = lngLatToTile(
-          sample.coordinate[0],
-          sample.coordinate[1],
-          zoom,
-        )
-        try {
-          const elevation = await client.sample(tile, tile.pixelX, tile.pixelY)
-          return { distance: sample.distance, elevation }
-        } catch {
-          return { distance: sample.distance, elevation: null }
-        }
-      }),
-    ).then((nextProfile) => {
+    const zoom = Math.min(
+      13,
+      Math.max(0, Math.floor(mapRef.current?.getZoom() ?? HOME_VIEW.zoom)),
+    )
+    void sampleElevationProfile(client, measurementPoints, zoom).then((nextProfile) => {
       if (sequence !== profileSequence.current) return
       setProfile(nextProfile)
       setProfileLoading(false)
     })
   }, [measurementPoints])
+
+  useEffect(() => {
+    const client = clientRef.current
+    const lastPoint = measurementPoints.at(-1)
+    const sequence = ++previewProfileSequence.current
+    if (!client || !lastPoint || !previewPoint || !hasPreviewSegment) {
+      setPreviewProfile([])
+      setPreviewProfileLoading(false)
+      return
+    }
+    setPreviewProfileLoading(true)
+    const timeout = window.setTimeout(() => {
+      const zoom = Math.min(
+        13,
+        Math.max(0, Math.floor(mapRef.current?.getZoom() ?? HOME_VIEW.zoom)),
+      )
+      void sampleElevationProfile(client, [lastPoint, previewPoint], zoom, 24).then(
+        (nextProfile) => {
+          if (sequence !== previewProfileSequence.current) return
+          setPreviewProfile(nextProfile)
+          setPreviewProfileLoading(false)
+        },
+      )
+    }, 80)
+    return () => window.clearTimeout(timeout)
+  }, [hasPreviewSegment, measurementPoints, previewPoint])
 
   const resetView = () => {
     mapRef.current?.easeTo({ ...HOME_VIEW, duration: 900 })
@@ -475,6 +571,7 @@ function App() {
     setMeasurementPoints([])
     setPreviewPoint(null)
     setProfile([])
+    setPreviewProfile([])
   }
 
   const toggleFullscreen = async () => {
@@ -627,15 +724,29 @@ function App() {
           <div className="measurement-heading">
             <div>
               <span>As-the-crow-flies</span>
-              <strong>{formatDistance(measuredDistances.total)}</strong>
+              <div className="measurement-values">
+                <strong>{formatDistance(measuredDistances.total)}</strong>
+                {hasPreviewSegment && (
+                  <em>{formatDistance(liveDistances.total)}</em>
+                )}
+              </div>
             </div>
             <div>
               <span>Walking distance</span>
-              <strong>
-                {profileLoading
-                  ? '…'
-                  : formatDistance(measuredWalkingDistance)}
-              </strong>
+              <div className="measurement-values">
+                <strong>
+                  {profileLoading
+                    ? '…'
+                    : formatDistance(measuredWalkingDistance)}
+                </strong>
+                {hasPreviewSegment && (
+                  <em>
+                    {profileLoading || previewProfileLoading
+                      ? '…'
+                      : formatDistance(liveWalkingDistance)}
+                  </em>
+                )}
+              </div>
             </div>
             <small>
               {measurementPoints.length}{' '}
@@ -644,18 +755,40 @@ function App() {
             </small>
           </div>
           <div className="profile-chart">
-            {profileLoading ? (
-              <span>Loading elevation profile…</span>
-            ) : profilePolyline ? (
+            {chartGeometry.committed || chartGeometry.preview ? (
               <svg
                 viewBox="0 0 600 100"
                 role="img"
                 aria-label="Elevation profile for the measured route"
                 preserveAspectRatio="none"
               >
-                <polygon points={`0,100 ${profilePolyline} 600,100`} />
-                <polyline points={profilePolyline} />
+                {chartGeometry.polygon && (
+                  <polygon points={chartGeometry.polygon} />
+                )}
+                {chartGeometry.committed && (
+                  <polyline
+                    className="profile-line"
+                    points={chartGeometry.committed}
+                  />
+                )}
+                {chartGeometry.preview && (
+                  <polyline
+                    className="profile-preview-line"
+                    points={chartGeometry.preview}
+                  />
+                )}
+                {chartGeometry.markers.map((marker, index) => (
+                  <circle
+                    className="profile-marker"
+                    cx={marker.x}
+                    cy={marker.y}
+                    key={index}
+                    r="5"
+                  />
+                ))}
               </svg>
+            ) : profileLoading || previewProfileLoading ? (
+              <span>Loading elevation profile…</span>
             ) : (
               <span>Add at least two points to see the elevation profile</span>
             )}
