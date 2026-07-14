@@ -1,0 +1,383 @@
+.app-shell,
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.app-shell {
+  --ink: #17251d;
+  --muted: #657167;
+  --panel: rgba(249, 248, 241, 0.94);
+  isolation: isolate;
+}
+
+.map {
+  background: #cad7d1;
+}
+
+.maplibregl-canvas {
+  cursor: crosshair;
+}
+
+.maplibregl-ctrl-bottom-right {
+  right: 12px;
+  bottom: 10px;
+}
+
+.maplibregl-ctrl-group {
+  border-radius: 10px !important;
+  overflow: hidden;
+}
+
+.brand {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 14px 9px 10px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(25, 40, 30, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.brand-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: #f3ead6;
+  background: #213b2b;
+  border-radius: 11px;
+}
+
+.brand-mark svg {
+  width: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.brand-mark svg path:first-child {
+  fill: rgba(243, 234, 214, 0.12);
+}
+
+.brand h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  line-height: 1.05;
+}
+
+.brand p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.35px;
+  text-transform: uppercase;
+}
+
+.control-panel {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  width: min(310px, calc(100vw - 44px));
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(25, 40, 30, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.panel-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.panel-toggle svg {
+  width: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  transition: transform 180ms ease;
+}
+
+.collapsed .panel-toggle {
+  padding-bottom: 14px;
+}
+
+.collapsed .panel-toggle svg {
+  transform: rotate(180deg);
+}
+
+.collapsed .panel-content {
+  display: none;
+}
+
+.panel-content {
+  display: grid;
+  gap: 13px;
+  padding: 3px 16px 16px;
+}
+
+.panel-content label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.panel-content select {
+  width: 100%;
+  padding: 10px 34px 10px 11px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #d6d9d0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.action-row button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 6px;
+  color: #334137;
+  background: transparent;
+  border: 1px solid #d6d9d0;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-row button:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.action-row svg {
+  width: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.elevation-card {
+  position: absolute;
+  left: 22px;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 11px 15px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 12px;
+  box-shadow: 0 7px 24px rgba(25, 40, 30, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+.elevation-card > div:not(.status-dot) {
+  display: grid;
+  gap: 2px;
+}
+
+.elevation-card span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.85px;
+  text-transform: uppercase;
+}
+
+.elevation-card strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.elevation-card i {
+  margin: 0 3px;
+  color: #879087;
+  font-family: inherit;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.range-stat {
+  padding-left: 20px;
+  border-left: 1px solid #d9ddd5;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  background: #5b9367;
+  border-radius: 50%;
+}
+
+.status-dot.loading {
+  background: #d69a3b;
+  animation: pulse 900ms infinite alternate;
+}
+
+.status-dot.error {
+  background: #b74c43;
+}
+
+.legend {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  width: min(330px, 40vw);
+  padding: 9px 12px 8px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 10px;
+  box-shadow: 0 7px 24px rgba(25, 40, 30, 0.12);
+  transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+}
+
+.gradient {
+  height: 8px;
+  border-radius: 4px;
+}
+
+.legend > div:last-child {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  color: #58645b;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.legend strong {
+  color: #3a493f;
+  font-size: 8px;
+  letter-spacing: 0.65px;
+  text-transform: uppercase;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.35;
+  }
+}
+
+@media (max-width: 720px) {
+  .brand {
+    top: 12px;
+    left: 12px;
+    padding-right: 11px;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand h1 {
+    font-size: 19px;
+  }
+
+  .brand p {
+    display: none;
+  }
+
+  .control-panel {
+    top: 12px;
+    right: 12px;
+    width: 180px;
+  }
+
+  .panel-toggle {
+    padding: 12px;
+  }
+
+  .panel-content {
+    padding: 2px 12px 12px;
+  }
+
+  .action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .elevation-card {
+    right: 12px;
+    bottom: 68px;
+    left: 12px;
+    justify-content: space-between;
+  }
+
+  .legend {
+    bottom: 14px;
+    width: calc(100vw - 24px);
+  }
+
+  .maplibregl-ctrl-bottom-right {
+    display: none;
+  }
+}
+
+@media (max-width: 390px) {
+  .range-stat {
+    padding-left: 10px;
+  }
+
+  .elevation-card {
+    gap: 8px;
+  }
+
+  .elevation-card strong {
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
