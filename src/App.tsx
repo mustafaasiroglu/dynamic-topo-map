@@ -55,6 +55,22 @@ function App() {
   const settingsRef = useRef({ palette, mode })
   settingsRef.current = { palette, mode }
   const activePalette = useMemo(() => getPalette(palette), [palette])
+  const legend = useMemo(() => {
+    if (mode === 'hillshade') {
+      return { stops: ['#101315', '#f7f7f4'], low: 'Shadow', high: 'Lit' }
+    }
+    if (mode === 'slope') {
+      return { stops: activePalette.stops, low: '0°', high: '60°+' }
+    }
+    if (mode === 'aspect') {
+      return { stops: activePalette.stops, low: '0°', high: '360°' }
+    }
+    return {
+      stops: activePalette.stops,
+      low: formatElevation(range.min),
+      high: formatElevation(range.max),
+    }
+  }, [activePalette.stops, mode, range.max, range.min])
 
   const updateTerrainSource = useCallback(
     (
@@ -320,13 +336,13 @@ function App() {
         <div
           className="gradient"
           style={{
-            background: `linear-gradient(90deg, ${activePalette.stops.join(', ')})`,
+            background: `linear-gradient(90deg, ${legend.stops.join(', ')})`,
           }}
         />
         <div>
-          <span>{formatElevation(range.min)}</span>
+          <span>{legend.low}</span>
           <strong>{mode === 'aspect' ? 'Orientation' : LAYERS.find((l) => l.id === mode)?.label}</strong>
-          <span>{formatElevation(range.max)}</span>
+          <span>{legend.high}</span>
         </div>
       </section>
     </main>

@@ -12,6 +12,7 @@ import type {
 const TILE_SIZE = 256
 const CACHE_LIMIT = 64
 const cache = new Map<string, Float32Array>()
+const pendingTiles = new Map<string, Promise<Float32Array>>()
 
 type RequestMessage =
   | { id: number; type: 'analyze'; tiles: TileCoordinate[] }
@@ -40,14 +41,7 @@ function remember(key: string, elevations: Float32Array) {
   }
 }
 
-async function loadTile(tile: TileCoordinate) {
-  const key = tileKey(tile)
-  const cached = cache.get(key)
-  if (cached) {
-    remember(key, cached)
-    return cached
-  }
-
+async function fetchTile(key: string) {
   const response = await fetch(
     `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${key}.png`,
   )
@@ -68,6 +62,25 @@ async function loadTile(tile: TileCoordinate) {
   }
   remember(key, elevations)
   return elevations
+}
+
+async function loadTile(tile: TileCoordinate) {
+  const key = tileKey(tile)
+  const cached = cache.get(key)
+  if (cached) {
+    remember(key, cached)
+    return cached
+  }
+  const pending = pendingTiles.get(key)
+  if (pending) return pending
+
+  const request = fetchTile(key)
+  pendingTiles.set(key, request)
+  try {
+    return await request
+  } finally {
+    pendingTiles.delete(key)
+  }
 }
 
 async function analyze(tiles: TileCoordinate[]) {
@@ -96,13 +109,13 @@ function hexToRgb(hex: string) {
   ]
 }
 
-function paletteColor(stops: readonly string[], value: number) {
+function paletteColor(stops: number[][], value: number) {
   const position = Math.min(1, Math.max(0, value)) * (stops.length - 1)
   const lower = Math.floor(position)
   const upper = Math.min(stops.length - 1, lower + 1)
   const amount = position - lower
-  const start = hexToRgb(stops[lower])
-  const end = hexToRgb(stops[upper])
+  const start = stops[lower]
+  const end = stops[upper]
   return start.map((channel, index) =>
     Math.round(channel + (end[index] - channel) * amount),
   )
@@ -153,7 +166,7 @@ async function render(
   range: ElevationRange,
 ) {
   const elevations = await loadTile(tile)
-  const stops = getPalette(paletteId).stops
+  const stops = getPalette(paletteId).stops.map(hexToRgb)
   const image = new ImageData(TILE_SIZE, TILE_SIZE)
   const span = Math.max(1, range.max - range.min)
 
