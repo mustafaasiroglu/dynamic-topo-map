@@ -179,7 +179,14 @@ function App() {
       }))
     const samples = [...committedSamples, ...previewSamples]
     if (samples.length < 2) {
-      return { committed: '', preview: '', polygon: '', markers: [] }
+      return {
+        committed: '',
+        preview: '',
+        polygon: '',
+        markers: [],
+        min: 0,
+        max: 0,
+      }
     }
     const elevations = samples.map(({ elevation }) => elevation)
     const min = Math.min(...elevations)
@@ -216,6 +223,8 @@ function App() {
           ? `0,100 ${committed} ${(committedSamples.at(-1)!.distance / distance) * 600},100`
           : '',
       markers,
+      min,
+      max,
     }
   }, [measuredDistances.total, measurementPoints, previewProfile, profile])
 
@@ -382,7 +391,7 @@ function App() {
           'circle-stroke-width': 3,
         },
       })
-      void analyzeViewport()
+      map.once('idle', () => void analyzeViewport())
     })
     map.on('move', () => {
       if (measuringRef.current) {
@@ -520,10 +529,6 @@ function App() {
     return () => window.clearTimeout(timeout)
   }, [hasPreviewSegment, measurementPoints, previewPoint])
 
-  const resetView = () => {
-    mapRef.current?.easeTo({ ...HOME_VIEW, duration: 900 })
-  }
-
   const locateUser = () => {
     if (!navigator.geolocation || locationStatus === 'loading') return
     setLocationStatus('loading')
@@ -651,10 +656,19 @@ function App() {
           aria-label={controlsOpen ? 'Hide map controls' : 'Show map controls'}
           onClick={() => setControlsOpen((open) => !open)}
         >
-          <span>Map controls</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+          {controlsOpen ? (
+            <>
+              <span>Map controls</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </>
+          ) : (
+            <svg className="settings-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9 7 7m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+            </svg>
+          )}
         </button>
         <div className="panel-content">
           <label>
@@ -684,12 +698,6 @@ function App() {
             </select>
           </label>
           <div className="action-row">
-            <button type="button" onClick={resetView}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 11a8 8 0 1 0 2-5.3M4 4v7h7" />
-              </svg>
-              Reset view
-            </button>
             <button type="button" onClick={() => void toggleFullscreen()}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M8 3H3v5m13-5h5v5M8 21H3v-5m13 5h5v-5" />
@@ -768,37 +776,43 @@ function App() {
           </div>
           <div className="profile-chart">
             {chartGeometry.committed || chartGeometry.preview ? (
-              <svg
-                viewBox="0 0 600 100"
-                role="img"
-                aria-label="Elevation profile for the measured route"
-                preserveAspectRatio="none"
-              >
-                {chartGeometry.polygon && (
-                  <polygon points={chartGeometry.polygon} />
-                )}
-                {chartGeometry.committed && (
-                  <polyline
-                    className="profile-line"
-                    points={chartGeometry.committed}
-                  />
-                )}
-                {chartGeometry.preview && (
-                  <polyline
-                    className="profile-preview-line"
-                    points={chartGeometry.preview}
-                  />
-                )}
-                {chartGeometry.markers.map((marker) => (
-                  <circle
-                    className="profile-marker"
-                    cx={marker.x}
-                    cy={marker.y}
-                    key={marker.id}
-                    r="5"
-                  />
-                ))}
-              </svg>
+              <>
+                <div className="profile-y-axis" aria-hidden="true">
+                  <span>{formatElevation(chartGeometry.max)}</span>
+                  <span>{formatElevation(chartGeometry.min)}</span>
+                </div>
+                <svg
+                  viewBox="0 0 600 100"
+                  role="img"
+                  aria-label={`Elevation profile from ${formatElevation(chartGeometry.min)} to ${formatElevation(chartGeometry.max)}`}
+                  preserveAspectRatio="none"
+                >
+                  {chartGeometry.polygon && (
+                    <polygon points={chartGeometry.polygon} />
+                  )}
+                  {chartGeometry.committed && (
+                    <polyline
+                      className="profile-line"
+                      points={chartGeometry.committed}
+                    />
+                  )}
+                  {chartGeometry.preview && (
+                    <polyline
+                      className="profile-preview-line"
+                      points={chartGeometry.preview}
+                    />
+                  )}
+                  {chartGeometry.markers.map((marker) => (
+                    <circle
+                      className="profile-marker"
+                      cx={marker.x}
+                      cy={marker.y}
+                      key={marker.id}
+                      r="5"
+                    />
+                  ))}
+                </svg>
+              </>
             ) : profileLoading || previewProfileLoading ? (
               <span>Loading elevation profile…</span>
             ) : (
