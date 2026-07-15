@@ -391,8 +391,7 @@ function App() {
           'circle-stroke-width': 3,
         },
       })
-      map.jumpTo(HOME_VIEW)
-      void analyzeViewport()
+      map.once('idle', () => void analyzeViewport())
     })
     map.on('move', () => {
       if (measuringRef.current) {
