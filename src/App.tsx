@@ -184,8 +184,8 @@ function App() {
         preview: '',
         polygon: '',
         markers: [],
-        min: null,
-        max: null,
+        min: 0,
+        max: 0,
       }
     }
     const elevations = samples.map(({ elevation }) => elevation)
@@ -776,9 +776,7 @@ function App() {
             </small>
           </div>
           <div className="profile-chart">
-            {chartGeometry.min !== null &&
-            chartGeometry.max !== null &&
-            (chartGeometry.committed || chartGeometry.preview) ? (
+            {chartGeometry.committed || chartGeometry.preview ? (
               <>
                 <div className="profile-y-axis" aria-hidden="true">
                   <span>{formatElevation(chartGeometry.max)}</span>
