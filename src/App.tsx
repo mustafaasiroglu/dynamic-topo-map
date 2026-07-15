@@ -776,7 +776,9 @@ function App() {
             </small>
           </div>
           <div className="profile-chart">
-            {chartGeometry.committed || chartGeometry.preview ? (
+            {chartGeometry.min !== null &&
+            chartGeometry.max !== null &&
+            (chartGeometry.committed || chartGeometry.preview) ? (
               <>
                 <div className="profile-y-axis" aria-hidden="true">
                   <span>{formatElevation(chartGeometry.max)}</span>

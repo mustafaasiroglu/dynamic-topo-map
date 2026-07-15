@@ -414,6 +414,7 @@
 }
 
 .profile-chart {
+  --profile-axis-width: 48px;
   position: relative;
   display: grid;
   min-height: 88px;
@@ -426,9 +427,9 @@
 }
 
 .profile-chart svg {
-  width: calc(100% - 48px);
+  width: calc(100% - var(--profile-axis-width));
   height: 88px;
-  margin-left: 48px;
+  margin-left: var(--profile-axis-width);
   overflow: visible;
 }
 
@@ -438,7 +439,7 @@
   bottom: 3px;
   left: 0;
   display: flex;
-  width: 43px;
+  width: calc(var(--profile-axis-width) - 5px);
   flex-direction: column;
   justify-content: space-between;
   padding-right: 5px;
