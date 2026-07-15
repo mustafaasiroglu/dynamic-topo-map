@@ -3,6 +3,7 @@ import {
   buildRouteSamples,
   distanceBetween,
   routeDistances,
+  routePointDistances,
   walkingDistance,
   type Coordinate,
 } from './measurement'
@@ -32,6 +33,21 @@ describe('route measurement', () => {
     expect(samples[0].coordinate).toEqual(points[0])
     expect(samples.at(-1)?.coordinate).toEqual(points.at(-1))
     expect(samples.at(-1)?.distance).toBeCloseTo(routeDistances(points).total)
+  })
+
+  it('returns the cumulative distance of each added point', () => {
+    const points: Coordinate[] = [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+    ]
+
+    expect(routePointDistances([])).toEqual([])
+    expect(routePointDistances(points)).toEqual([
+      0,
+      distanceBetween(points[0], points[1]),
+      routeDistances(points).total,
+    ])
   })
 
   it('does not sample an unfinished route', () => {
